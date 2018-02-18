@@ -72,16 +72,22 @@ task buildDocker( type: Docker, dependsOn: [ bootJar ] ) {
     push = false
     applicationName = project.ext.name
     tagVersion = 'latest'
-    volume( '/tmp' )
+    // Keep extra volumes from appearing in certain docker volume providers.
+    //volume( '/tmp' )
     exposePort( 8080 )
     // We need glibc for kafka streams b/c of rocksdb using the jni
     runCommand( 'apt-get -y update && apt-get -y install curl' )
     entryPoint( [ "java",
                   "-Djava.security.egd=file:/dev/./urandom",
                   "-Dinfo.build.version=${project.version}",
-                  "-Xms32M", // Initial heap.
+                  "-Xms256M", // Initial heap.
                   "-Xmx256M", // Max heap scale OUT not up.
-                  "-Xss1M", // Stack is 512K
+                  "-Xss1M", // Stack is 1M
+                  "-XX:+UseG1GC", // enable the G1 GC.
+                  "-XX:ParallelGCThreads=2",
+                  "-XX:ConcGCThreads=2",
+                  //"-XX:+PrintGCDetails",
+                  //"-XX:+PrintGCTimeStamps",
                   "-jar",
                   "/${applicationName}.jar" ] )
     addFile( bootJar.archivePath, "${applicationName}.jar" )
