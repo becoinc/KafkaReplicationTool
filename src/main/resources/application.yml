@@ -1,0 +1,12 @@
+# Enable debug logs.
+debug: false
+
+spring:
+  application:
+    name: 'KafkaManager'
+
+management:
+  endpoints:
+    web:
+      expose: '*'
+      base-path: /internal/monitor
