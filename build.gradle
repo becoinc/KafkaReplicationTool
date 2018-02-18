@@ -9,17 +9,42 @@ buildscript {
 	}
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-	}
+        classpath('se.transmode.gradle:gradle-docker:1.2')
+        classpath('org.ajoberstar:gradle-git:1.4.2')
+    }
 }
+
+project.group    = 'becoinc'
+project.ext.name = 'kafka_manager'
+
+// Add the shortened Git revision hash to the version.
+def grgit = org.ajoberstar.grgit.Grgit.open(project.rootDir)
+def gitDesc = grgit.describe()
+project.version = "${gitDesc}"
 
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
+apply plugin: 'docker'
+apply plugin: 'jacoco'
 
-group = 'io.beco'
-version = '0.0.1-SNAPSHOT'
+jar {
+    baseName = project.ext.name
+    version = project.version
+}
 sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+springBoot  {
+    buildInfo()
+}
+
+docker {
+    baseImage 'openjdk:8-jre'
+    maintainer 'Jeffrey Zampieron <jzampieron@beco.io>'
+}
+
 
 repositories {
 	mavenCentral()
@@ -38,5 +63,44 @@ dependencies {
 	compile('org.springframework.boot:spring-boot-starter-thymeleaf')
 	compile('org.springframework.boot:spring-boot-starter-web')
 
+    compile( 'org.apache.kafka:kafka-clients:0.11.0.2' )
+
     testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+task buildDocker( type: Docker, dependsOn: [ bootJar ] ) {
+    push = false
+    applicationName = project.ext.name
+    tagVersion = 'latest'
+    volume( '/tmp' )
+    exposePort( 8080 )
+    // We need glibc for kafka streams b/c of rocksdb using the jni
+    runCommand( 'apt-get -y update && apt-get -y install curl' )
+    entryPoint( [ "java",
+                  "-Djava.security.egd=file:/dev/./urandom",
+                  "-Dinfo.build.version=${project.version}",
+                  "-Xms32M", // Initial heap.
+                  "-Xmx256M", // Max heap scale OUT not up.
+                  "-Xss1M", // Stack is 512K
+                  "-jar",
+                  "/${applicationName}.jar" ] )
+    addFile( bootJar.archivePath, "${applicationName}.jar" )
+    /*
+     * You can use a RUN command to "touch" the jar file so that it
+     * has a file modification time (Docker creates all container
+     * files in an "unmodified" state by default).
+     * This actually isn’t important for the simple app that we wrote,
+     * but any static content (e.g. "index.html") would require the
+     * file to have a modification time.
+     */
+    //runCommand( 'sh -c "touch /app.jar"')
+}
+
+build.dependsOn.add( [ buildDocker ] )
+build.dependsOn.add( [ jacocoTestReport ] )
+
+// The below mod to the test task allows the test target to run.
+test {
+    include '**/AllTests.class'
+    //systemProperties.put( 'spring.config.location', 'file:src/dev/resources/application-dev.properties' )
 }
