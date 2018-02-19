@@ -1,10 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
     <title>Kafka Management UI</title>
 </head>
 <body>
-
+    <h1>Kafka Cluster Information</h1>
+    <div>
+        <ul>
+            <li>Cluster Id: <label th:text="${clusterId}">12345678</label></li>
+            <li>Controller: <label th:text="${controller}">       </label></li>
+            <li>Nodes:      <label th:text="${nodes}">            </label></li>
+            <li>Topics:</li>
+            <li th:each="topic : ${topicListings}">
+                <label th:text="${topic}">TopicName</label>
+            </li>
+        </ul>
+    </div>
 </body>
 </html>
