@@ -168,6 +168,14 @@ public class KafkaTopicController
         return "topicView";
     }
 
+    @GetMapping( "/topic/{topicName}" )
+    public String describeTopicBase( @PathVariable String topicName,
+                                     Model m )
+    throws InterruptedException, ExecutionException, TimeoutException
+    {
+        return this.describeTopic( topicName, m );
+    }
+
     @GetMapping( "/topic/{topicName}/rebalance" )
     public String describeTopicFromRebalance( @PathVariable String topicName,
                                               Model m )
