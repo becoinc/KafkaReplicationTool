@@ -88,6 +88,9 @@
                    name="_csrf"
                    value="CSRFTOKEN"
                    th:value="${_csrf == null ? null : _csrf.getToken()}" />
+            <input type="hidden"
+                   name="assignmentPlan"
+                   th:value="${assignmentPlan == null ? '' : assignmentPlan}"/>
             <table>
                 <tr>
                     <th>Partition/Broker</th>
@@ -97,7 +100,7 @@
                     <td th:text="${part.partition()}">partition id</td>
                     <td th:each="broker : ${nodes}">
                         <input type="checkbox"
-                               th:name="${part.partition()} + ',' + ${broker.id()}"
+                               th:name="'partitionAssignment-' + ${part.partition()} + ',' + ${broker.id()}"
                                th:value="${part.partition()} + ',' + ${broker.id()}"
                                th:if="${partitionsToSetOfNodeIds[ part.partition() ].contains( broker.id() )}"
                                checked="checked"/>
@@ -108,7 +111,16 @@
                     </td>
                 </tr>
             </table>
-            <input type="submit" value="Re-balance"/>
+            <br/>
+            <select name="operation">
+                <option value="Verify" selected="selected">Verify Assignments</option>
+                <option value="Execute">Execute Assignments</option>
+            </select>
+            <br/>
+            <label>Throttle Re-sync to specified KiBps:</label>
+            <input type="number" name="throttle" min="0"/>
+            <br/>
+            <input type="submit" value="Submit"/>
             <input type="reset"/>
         </form>
     </div>

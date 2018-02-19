@@ -12,12 +12,21 @@
 
 package io.beco.KafkaManager;
 
+import kafka.admin.AdminUtils;
+import kafka.admin.AdminUtils$;
+import kafka.admin.ReassignPartitionsCommand;
+import kafka.common.TopicAndPartition;
+import kafka.utils.ZkUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
+import org.apache.kafka.common.security.JaasUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,6 +36,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import scala.Int;
+import scala.Tuple2;
+import scala.collection.Seq;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -46,11 +58,26 @@ public class KafkaTopicController
 
     private final AdminClient adminClient;
 
+    private final ZkUtils zkUtils;
+
+    private final String zkUrl;
+
+    private Map< TopicAndPartition, List< Integer > > assignmentPlan;
+
     @Autowired
-    public KafkaTopicController( final KafkaAdmin kafkaAdmin )
+    public KafkaTopicController( @Value( "${zookeeper.url}" ) final String zkUrl,
+                                 final KafkaAdmin kafkaAdmin )
     {
         this.kafkaAdmin  = kafkaAdmin;
         this.adminClient = AdminClient.create( kafkaAdmin.getConfig() );
+        this.zkUrl       = zkUrl;
+
+        final Tuple2< ZkClient, ZkConnection > zkClient
+            = ZkUtils.createZkClientAndConnection( zkUrl,
+                                                  30000,
+                                                  30000 );
+        this.zkUtils = new ZkUtils( zkClient._1, zkClient._2, JaasUtils.isZkSecurityEnabled() );
+
         log.info( "Kafka Client Properties: {}", kafkaAdmin.getConfig() );
     }
 
@@ -191,7 +218,84 @@ public class KafkaTopicController
     throws InterruptedException, ExecutionException, TimeoutException
     {
         log.debug( "Selected Part to Brokers: {}", formData );
+
+        final String operation = formData.getFirst( "operation" );
+        final ReassignPartitionsCommand.Throttle throttle
+            = new ReassignPartitionsCommand.Throttle( Long.parseLong( formData.getFirst( "throttle" ) ),
+                                                      ReassignPartitionsCommand.Throttle.$lessinit$greater$default$2() );
+
+        switch ( operation )
+        {
+            case "Execute":
+                if ( zkUtils.pathExists( ZkUtils.ReassignPartitionsPath() ) )
+                {
+                    log.error("There is an existing assignment running.");
+                }
+                else
+                {
+                    this.assignmentPlan = buildAssignmentPlan( formData );
+                }
+                break;
+            case "Verify":
+            default:
+                break;
+        }
+
+        m.addAttribute( "assignmentPlan", this.assignmentPlan );
+
         return this.describeTopic( topicName, m );
     }
 
+    private Map< TopicAndPartition, List< Integer > > buildAssignmentPlan( MultiValueMap< String, String > formData )
+    {
+        final Map< TopicAndPartition, List< Integer > > retVal = new HashMap<>();
+
+        for( Map.Entry< String, List< String > > item  : formData.entrySet() )
+        {
+
+        }
+
+        return retVal;
+    }
+
+    /**
+     *
+     * @param zkUtils
+     * @param partitionsToBeReassigned This is really the scala type: Map[TopicAndPartition, Seq[Int]]
+     * @param throttle
+     */
+    private void executeAssignment( ZkUtils zkUtils,
+                                    scala.collection.Map< TopicAndPartition, Seq< Object > > partitionsToBeReassigned,
+                                    ReassignPartitionsCommand.Throttle throttle )
+    {
+        // This is really a Seq< scala.Int > but for some reason the type system doesn't
+        // understand that.
+        final ReassignPartitionsCommand reassignPartitionsCommand
+            = new ReassignPartitionsCommand( zkUtils, partitionsToBeReassigned, AdminUtils$.MODULE$ );
+
+        // If there is an existing rebalance running, attempt to change its throttle
+        if ( zkUtils.pathExists( ZkUtils.ReassignPartitionsPath() ) )
+        {
+            log.error("There is an existing assignment running.");
+            reassignPartitionsCommand.maybeLimit(throttle);
+        }
+        else
+        {
+            if ( throttle.value() >= 0 )
+            {
+                log.warn( "Warning: You must run Verify periodically, until the reassignment completes, "
+                          + " to ensure the throttle is removed. "
+                          + "You can also alter the throttle by rerunning the Execute command passing a new value." );
+            }
+
+            if (reassignPartitionsCommand.reassignPartitions(throttle))
+            {
+                log.info( "Successfully started reassignment of partitions." );
+            }
+            else
+            {
+                log.error( "Failed to reassign partitions {}", partitionsToBeReassigned );
+            }
+        }
+    }
 }

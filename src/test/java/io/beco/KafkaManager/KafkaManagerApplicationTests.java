@@ -29,7 +29,9 @@ import java.util.Set;
 
 @RunWith(SpringRunner.class)
 @DirtiesContext
-@EmbeddedKafka( topics = { "test.topics.1", "test.topics.2" } )
+@EmbeddedKafka( count = 2, // need a couple of brokers to make this interesting.
+                partitions = 10,
+                topics = { "test.topics.1", "test.topics.2" } )
 @SpringBootTest( webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
                  classes = { KafkaManagerApplication.class, TestConfiguration.class } )
 public class KafkaManagerApplicationTests

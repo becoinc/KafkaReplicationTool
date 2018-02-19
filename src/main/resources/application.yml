@@ -10,6 +10,9 @@ spring:
       client-id: 'kafkaManager'
     bootstrap-servers: 'localhost:9092'
 
+zookeeper:
+  url: 'localhost:2181'
+
 management:
   endpoints:
     web:
