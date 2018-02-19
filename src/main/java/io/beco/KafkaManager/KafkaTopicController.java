@@ -12,9 +12,9 @@
 
 package io.beco.KafkaManager;
 
-import kafka.admin.AdminUtils;
 import kafka.admin.AdminUtils$;
 import kafka.admin.ReassignPartitionsCommand;
+import kafka.admin.ReassignPartitionsCommand$;
 import kafka.common.TopicAndPartition;
 import kafka.utils.ZkUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +31,12 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.Assert;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import scala.Int;
 import scala.Tuple2;
 import scala.collection.Seq;
 
@@ -62,7 +62,7 @@ public class KafkaTopicController
 
     private final String zkUrl;
 
-    private Map< TopicAndPartition, List< Integer > > assignmentPlan;
+    private MultiValueMap< TopicAndPartition, Integer > assignmentPlan;
 
     @Autowired
     public KafkaTopicController( @Value( "${zookeeper.url}" ) final String zkUrl,
@@ -220,9 +220,19 @@ public class KafkaTopicController
         log.debug( "Selected Part to Brokers: {}", formData );
 
         final String operation = formData.getFirst( "operation" );
+        long throttleVal = 0;
+        try
+        {
+            throttleVal = Long.parseLong( formData.getFirst( "throttle" ) );
+        }
+        catch( NumberFormatException nfe )
+        {
+            log.error( "Invalid Number Format for throttle... using default of 0." );
+        }
+
         final ReassignPartitionsCommand.Throttle throttle
-            = new ReassignPartitionsCommand.Throttle( Long.parseLong( formData.getFirst( "throttle" ) ),
-                                                      ReassignPartitionsCommand.Throttle.$lessinit$greater$default$2() );
+            = new ReassignPartitionsCommand.Throttle( throttleVal,
+                                                      ReassignPartitionsCommand$.MODULE$.NoThrottle().postUpdateAction() );
 
         switch ( operation )
         {
@@ -233,7 +243,7 @@ public class KafkaTopicController
                 }
                 else
                 {
-                    this.assignmentPlan = buildAssignmentPlan( formData );
+                    this.assignmentPlan = buildAssignmentPlan( topicName, formData );
                 }
                 break;
             case "Verify":
@@ -246,13 +256,28 @@ public class KafkaTopicController
         return this.describeTopic( topicName, m );
     }
 
-    private Map< TopicAndPartition, List< Integer > > buildAssignmentPlan( MultiValueMap< String, String > formData )
+    private MultiValueMap< TopicAndPartition, Integer >
+        buildAssignmentPlan( final String topicName,
+                             final MultiValueMap< String, String > formData )
     {
-        final Map< TopicAndPartition, List< Integer > > retVal = new HashMap<>();
+        final MultiValueMap< TopicAndPartition, Integer > retVal = new LinkedMultiValueMap<>();
 
         for( Map.Entry< String, List< String > > item  : formData.entrySet() )
         {
+            final String key = item.getKey();
+            if( key.startsWith( "partitionAssignment-" ) )
+            {
+                final List< String > partitionBrokerIdStr = item.getValue();
+                // These should all be 1 element lists.
+                Assert.isTrue( partitionBrokerIdStr.size() == 1, "List of Broker Ids must be 1." );
+                final String[] partitionBrokerIdCsv = partitionBrokerIdStr.get( 0 ).split( "," );
 
+                final int partitionNum = Integer.parseInt( partitionBrokerIdCsv[ 0 ] );
+                final int brokerId     = Integer.parseInt( partitionBrokerIdCsv[ 1 ] );
+
+                final TopicAndPartition tp = new TopicAndPartition( topicName, partitionNum );
+                retVal.add( tp, brokerId );
+            }
         }
 
         return retVal;
