@@ -5,6 +5,11 @@
 <head>
     <meta charset="UTF-8"/>
     <title>Kafka Management UI</title>
+    <link rel='stylesheet'
+          id='beco-style-css'
+          href='/css/styles.css?ver=4.1'
+          type='text/css'
+          media='all' />
 </head>
 <body>
     <h1>Kafka Cluster Information</h1>
@@ -15,7 +20,7 @@
             <li>Nodes:      <label th:text="${nodes}">            </label></li>
             <li>Topics:</li>
             <li th:each="topic : ${topicListings}">
-                <label th:text="${topic}">TopicName</label>
+                <a th:href="@{/topic/{topic}/describe(topic=${topic.name()})}" th:text="${topic}">TopicName</a>
             </li>
         </ul>
     </div>

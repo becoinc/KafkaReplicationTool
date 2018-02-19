@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Kafka Management UI</title>
+    <link rel='stylesheet'
+          id='beco-style-css'
+          href='/css/styles.css?ver=4.1'
+          type='text/css'
+          media='all' />
+</head>
+<body>
+    <h1>Kafka Topic Information</h1>
+    <br/>
+    <h2>Topic: <label th:text="${topicName}"></label></h2>
+    <div>
+        <ul>
+            <li>Name: <label th:text="${topicInfo.name()}"></label></li>
+            <li>Is Internal? <label th:text="${topicInfo.isInternal()}"></label></li>
+            <li>
+                Partition Information:
+                <br/>
+                Partition Count <label th:text="${topicInfo.partitions().size()}"></label>
+                <br/>
+                <table>
+                    <tr>
+                        <th>Partition Id</th>
+                        <th>Leader</th>
+                        <th>Number of Replicas</th>
+                        <th>Number of In-Sync Replicas (ISRs)</th>
+                        <th>ISR Info</th>
+                        <th>Replica Info</th>
+                    </tr>
+                    <tr th:each="part : ${topicInfo.partitions()}">
+                        <td th:text="${part.partition()}">0</td>
+                        <td th:text="${part.leader()}"></td>
+                        <td th:text="${part.replicas().size()}"></td>
+                        <td th:text="${part.isr().size()}"></td>
+                        <td> <!-- ISR Information -->
+                            Node Info
+                            <br/>
+                            <table>
+                                <tr>
+                                    <th>Host</th>
+                                    <th>id</th>
+                                    <th>port</th>
+                                    <th>rack</th>
+                                </tr>
+                                <tr th:each="node : ${part.isr()}">
+                                    <td th:text="${node.host()}">localhost</td>
+                                    <td th:text="${node.id()}">id</td>
+                                    <td th:text="${node.port()}">port</td>
+                                    <td th:text="${node.rack()}">rack</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td> <!-- Replica Information -->
+                            Node Info
+                            <br/>
+                            <table>
+                                <tr>
+                                    <th>Host</th>
+                                    <th>id</th>
+                                    <th>port</th>
+                                    <th>rack</th>
+                                </tr>
+                                <tr th:each="node : ${part.replicas()}">
+                                    <td th:text="${node.host()}">localhost</td>
+                                    <td th:text="${node.id()}">id</td>
+                                    <td th:text="${node.port()}">port</td>
+                                    <td th:text="${node.rack()}">rack</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

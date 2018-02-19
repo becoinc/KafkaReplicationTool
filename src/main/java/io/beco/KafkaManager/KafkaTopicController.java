@@ -20,9 +20,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -104,4 +107,34 @@ public class KafkaTopicController
 
         return "index";
     }
+
+    @GetMapping( "/topic/{topicName}/describe" )
+    public String describeTopic( @PathVariable String topicName,
+                                 Model m ) throws InterruptedException, ExecutionException, TimeoutException
+    {
+        log.debug( "Describing Topic: {}", topicName );
+
+        m.addAttribute( "topicName", topicName );
+
+        final DescribeTopicsResult dtr = this.adminClient.describeTopics( Collections.singleton( topicName ) );
+        final KafkaFuture< Map< String, TopicDescription > > topicData
+            = dtr.all()
+                 .thenApply( new KafkaFuture.Function< Map< String, TopicDescription >, Map< String, TopicDescription > >()
+            {
+                @Override
+                public Map< String, TopicDescription > apply( Map< String, TopicDescription > topicDescriptionMap )
+                {
+                    Assert.isTrue( topicDescriptionMap.size() == 1, "Only Single Topic Supported." );
+                    m.addAttribute( "topicInfo", topicDescriptionMap.get( topicName ) );
+                    return topicDescriptionMap;
+                }
+            } );
+
+        topicData.get( 5, TimeUnit.SECONDS );
+
+        log.debug( "Topic Desc: {}", m.asMap() );
+
+        return "topicView";
+    }
+
 }
