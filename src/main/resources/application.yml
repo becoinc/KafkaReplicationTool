@@ -1,12 +1,22 @@
 # Enable debug logs.
 debug: false
 
+
 spring:
   application:
     name: 'KafkaManager'
+  kafka:
+    admin:
+      client-id: 'kafkaManager'
+    bootstrap-servers: 'localhost:9092'
 
 management:
   endpoints:
     web:
       expose: '*'
       base-path: /internal/monitor
+
+logging:
+  level:
+    io:
+      beco: debug
