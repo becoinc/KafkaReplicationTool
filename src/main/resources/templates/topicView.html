@@ -98,10 +98,12 @@
                     <td th:each="broker : ${nodes}">
                         <input type="checkbox"
                                th:name="${part.partition()} + ',' + ${broker.id()}"
+                               th:value="${part.partition()} + ',' + ${broker.id()}"
                                th:if="${partitionsToSetOfNodeIds[ part.partition() ].contains( broker.id() )}"
                                checked="checked"/>
                         <input type="checkbox"
                                th:name="${part.partition()} + ',' + ${broker.id()}"
+                               th:value="${part.partition()} + ',' + ${broker.id()}"
                                th:unless="${partitionsToSetOfNodeIds[ part.partition() ].contains( broker.id() )}"/>
                     </td>
                 </tr>

@@ -22,9 +22,11 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.Assert;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -166,10 +168,22 @@ public class KafkaTopicController
         return "topicView";
     }
 
-    @PostMapping( "/topic/{topicName}/rebalance" )
-    public String rebalanceTopic( @PathVariable String topicName, Model m )
+    @GetMapping( "/topic/{topicName}/rebalance" )
+    public String describeTopicFromRebalance( @PathVariable String topicName,
+                                              Model m )
+    throws InterruptedException, ExecutionException, TimeoutException
     {
-        return "topicView";
+        return this.describeTopic( topicName, m );
+    }
+
+    @PostMapping( "/topic/{topicName}/rebalance" )
+    public String rebalanceTopic( @PathVariable String topicName,
+                                  @RequestBody MultiValueMap< String, String > formData,
+                                  Model m )
+    throws InterruptedException, ExecutionException, TimeoutException
+    {
+        log.debug( "Selected Part to Brokers: {}", formData );
+        return this.describeTopic( topicName, m );
     }
 
 }
