@@ -79,5 +79,36 @@
             </li>
         </ul>
     </div>
+    <div>
+        <label>Partition to Node Matrix</label>
+        <!-- This section contains a matrix of partitions to nodes -->
+        <form th:action="@{/topic/{topicName}/rebalance(topicName=${topicName})}" method="post">
+            <!-- XSRF token needed here. -->
+            <input type="hidden"
+                   name="_csrf"
+                   value="CSRFTOKEN"
+                   th:value="${_csrf == null ? null : _csrf.getToken()}" />
+            <table>
+                <tr>
+                    <th>Partition/Broker</th>
+                    <th th:each="broker : ${nodes}" th:text="${broker.host()} + '-' + ${broker.id()}"></th>
+                </tr>
+                <tr th:each="part : ${topicInfo.partitions()}">
+                    <td th:text="${part.partition()}">partition id</td>
+                    <td th:each="broker : ${nodes}">
+                        <input type="checkbox"
+                               th:name="${part.partition()} + ',' + ${broker.id()}"
+                               th:if="${partitionsToSetOfNodeIds[ part.partition() ].contains( broker.id() )}"
+                               checked="checked"/>
+                        <input type="checkbox"
+                               th:name="${part.partition()} + ',' + ${broker.id()}"
+                               th:unless="${partitionsToSetOfNodeIds[ part.partition() ].contains( broker.id() )}"/>
+                    </td>
+                </tr>
+            </table>
+            <input type="submit" value="Re-balance"/>
+            <input type="reset"/>
+        </form>
+    </div>
 </body>
 </html>

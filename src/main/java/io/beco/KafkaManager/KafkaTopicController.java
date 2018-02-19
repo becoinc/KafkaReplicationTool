@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Controller;
@@ -23,13 +24,13 @@ import org.springframework.ui.Model;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * KafkaTopicController is a class that does...
@@ -116,24 +117,58 @@ public class KafkaTopicController
 
         m.addAttribute( "topicName", topicName );
 
+        final DescribeClusterResult dcr    = this.adminClient.describeCluster();
         final DescribeTopicsResult dtr = this.adminClient.describeTopics( Collections.singleton( topicName ) );
-        final KafkaFuture< Map< String, TopicDescription > > topicData
-            = dtr.all()
-                 .thenApply( new KafkaFuture.Function< Map< String, TopicDescription >, Map< String, TopicDescription > >()
+
+        final KafkaFuture< Void > topicData
+            = KafkaFuture.allOf(
+            dtr.all()
+               .thenApply( new KafkaFuture.Function< Map< String, TopicDescription >, Map< String, TopicDescription > >()
             {
                 @Override
                 public Map< String, TopicDescription > apply( Map< String, TopicDescription > topicDescriptionMap )
                 {
                     Assert.isTrue( topicDescriptionMap.size() == 1, "Only Single Topic Supported." );
-                    m.addAttribute( "topicInfo", topicDescriptionMap.get( topicName ) );
+
+                    final TopicDescription description = topicDescriptionMap.get( topicName );
+                    m.addAttribute( "topicInfo", description );
+
+                    final Map< Integer, Set< Integer > > partitionsToSetOfNodeIds =
+                    description.partitions()
+                               .stream()
+                               .collect( Collectors.toMap( TopicPartitionInfo::partition,
+                                                           tpi -> tpi.replicas()
+                                                                     .stream()
+                                                                     .map( Node::id )
+                                                                     .collect( Collectors.toSet() ) ) );
+                    m.addAttribute( "partitionsToSetOfNodeIds", partitionsToSetOfNodeIds );
                     return topicDescriptionMap;
                 }
-            } );
+            } ),
+            dcr.nodes()
+               .thenApply( new KafkaFuture.Function< Collection<Node>, Object >()
+           {
+               @Override
+               public Object apply( Collection< Node > nodes )
+               {
+                   final Set< Node > sortedNodes = new TreeSet<>( Comparator.comparingInt( Node::id ) );
+                   sortedNodes.addAll( nodes );
+                   m.addAttribute( "nodes", sortedNodes );
+                   return null;
+               }
+           } )
+        );
 
         topicData.get( 5, TimeUnit.SECONDS );
 
         log.debug( "Topic Desc: {}", m.asMap() );
 
+        return "topicView";
+    }
+
+    @PostMapping( "/topic/{topicName}/rebalance" )
+    public String rebalanceTopic( @PathVariable String topicName, Model m )
+    {
         return "topicView";
     }
 

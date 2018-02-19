@@ -34,6 +34,10 @@ import java.util.Set;
                  classes = { KafkaManagerApplication.class, TestConfiguration.class } )
 public class KafkaManagerApplicationTests
 {
+
+    private static final String TEST_TOPIC_1 = "test.topics.1";
+    private static final String TEST_TOPIC_2 = "test.topics.2";
+
     @LocalServerPort
     private int port;
 
@@ -84,11 +88,39 @@ public class KafkaManagerApplicationTests
         Assert.assertTrue( "Must contain test topic names",    model.containsKey( "topicNames" ) );
         Assert.assertTrue( "Must contain test topic listings", model.containsKey( "topicListings" ) );
         Assert.assertTrue( "Must contain test cluster id",     model.containsKey( "clusterId" ) );
-        Assert.assertTrue( "Must contain test controller",     model.containsKey( "nodes" ) );
-        Assert.assertTrue( "Must contain test nodes",          model.containsKey( "controller" ) );
+        Assert.assertTrue( "Must contain test nodes",          model.containsKey( "nodes" ) );
+        Assert.assertTrue( "Must contain test controller",     model.containsKey( "controller" ) );
         final Set< String > topicNames = ( Set< String > ) model.get( "topicNames" );
-        Assert.assertTrue( "Must contain test topics", topicNames.contains( "test.topics.1" ) );
-        Assert.assertTrue( "Must contain test topics", topicNames.contains( "test.topics.2" ) );
+        Assert.assertTrue( "Must contain test topics", topicNames.contains( TEST_TOPIC_1 ) );
+        Assert.assertTrue( "Must contain test topics", topicNames.contains( TEST_TOPIC_2 ) );
+    }
+
+    @Test
+    public void testGetTopicInfo() throws Exception
+    {
+        final UriComponentsBuilder uri
+            = UriComponentsBuilder.fromUriString( this.baseUrl )
+                                  .pathSegment( "topic", TEST_TOPIC_1, "describe" );
+
+        final MockHttpServletRequestBuilder builder
+            = MockMvcRequestBuilders.get( uri.toUriString() )
+            // .with( SecurityMockMvcRequestPostProcessors.httpBasic( username, password ) )
+            ;
+
+        final MvcResult result
+            = mMockMvc.perform( builder )
+                      .andDo( MockMvcResultHandlers.print() )
+                      .andExpect( MockMvcResultMatchers.status().isOk() )
+                      .andExpect( MockMvcResultMatchers.content().contentTypeCompatibleWith( MediaType.TEXT_HTML ) )
+                      // xpath uses 1-based indexes
+                      .andExpect( MockMvcResultMatchers.xpath( "/html/body" ).exists() )
+                      .andReturn()
+            ;
+        final ModelAndView mv = result.getModelAndView();
+        final Map< String, Object > model = mv.getModel();
+        Assert.assertTrue( "Must contain test topic name", model.containsKey( "topicName" ) );
+        Assert.assertTrue( "Must contain test nodes",      model.containsKey( "nodes" ) );
+        Assert.assertEquals( model.get( "topicName" ), TEST_TOPIC_1 );
     }
 
 }
