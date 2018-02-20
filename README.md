@@ -7,6 +7,8 @@ is not conducive to a better work flow.
 
 ## Example Marathon App Definition ##
 
+[Docker Hub Link](https://hub.docker.com/r/becoinc/kafka_repartition_tool/)
+
 It's easy to deploy this tool with DC/OS - Marathon:
 
 ```json
