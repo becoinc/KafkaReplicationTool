@@ -71,6 +71,8 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.apache.kafka/kafka
     // Pull in the whole ball of wax to get the ZK utils and such
+    //
+    // This version must match the version pulled by Spring kafka...
     compile( group: 'org.apache.kafka', name: 'kafka_2.11', version: '1.0.0' ) {
         exclude module: 'slf4j-log4j12'
     }
