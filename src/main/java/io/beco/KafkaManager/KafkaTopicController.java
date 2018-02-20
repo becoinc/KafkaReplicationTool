@@ -142,7 +142,7 @@ public class KafkaTopicController
                                     } )
                                  );
 
-        clusterInfo.get( 5, TimeUnit.SECONDS );
+        clusterInfo.get( 25, TimeUnit.SECONDS );
 
         log.debug( "Model Attributes: {}", m.asMap() );
 
@@ -199,7 +199,7 @@ public class KafkaTopicController
            } )
         );
 
-        topicData.get( 5, TimeUnit.SECONDS );
+        topicData.get( 25, TimeUnit.SECONDS );
 
         log.debug( "Topic Desc: {}", m.asMap() );
 
