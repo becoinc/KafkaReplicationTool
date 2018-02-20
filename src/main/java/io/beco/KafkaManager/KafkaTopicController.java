@@ -15,7 +15,6 @@ package io.beco.KafkaManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import kafka.admin.AdminUtils$;
 import kafka.admin.ReassignPartitionsCommand;
 import kafka.admin.ReassignPartitionsCommand$;
 import kafka.common.TopicAndPartition;
@@ -40,8 +39,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import scala.Option;
 import scala.Tuple2;
-import scala.collection.Seq;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -61,6 +60,8 @@ public class KafkaTopicController
 
     private final AdminClient adminClient;
 
+    private final Option< AdminClient > adminClientOption;
+
     private final ZkUtils zkUtils;
 
     private final String zkUrl;
@@ -74,10 +75,11 @@ public class KafkaTopicController
                                  final KafkaAdmin kafkaAdmin,
                                  final ObjectMapper objectMapper )
     {
-        this.kafkaAdmin  = kafkaAdmin;
-        this.adminClient = AdminClient.create( kafkaAdmin.getConfig() );
-        this.zkUrl       = zkUrl;
-        this.om          = objectMapper;
+        this.kafkaAdmin        = kafkaAdmin;
+        this.adminClient       = AdminClient.create( kafkaAdmin.getConfig() );
+        this.adminClientOption = Option.apply( this.adminClient );
+        this.zkUrl             = zkUrl;
+        this.om                = objectMapper;
 
         this.om.enable( SerializationFeature.INDENT_OUTPUT );
 
@@ -155,8 +157,8 @@ public class KafkaTopicController
 
         m.addAttribute( "topicName", topicName );
 
-        final DescribeClusterResult dcr    = this.adminClient.describeCluster();
-        final DescribeTopicsResult dtr = this.adminClient.describeTopics( Collections.singleton( topicName ) );
+        final DescribeClusterResult dcr = this.adminClient.describeCluster();
+        final DescribeTopicsResult  dtr = this.adminClient.describeTopics( Collections.singleton( topicName ) );
 
         final KafkaFuture< Void > topicData
             = KafkaFuture.allOf(
@@ -233,6 +235,7 @@ public class KafkaTopicController
         try
         {
             throttleVal = Long.parseLong( formData.getFirst( "throttle" ) );
+            throttleVal *= 1024; // we ask for input in KiBps
         }
         catch( NumberFormatException nfe )
         {
@@ -242,6 +245,8 @@ public class KafkaTopicController
         final ReassignPartitionsCommand.Throttle throttle
             = new ReassignPartitionsCommand.Throttle( throttleVal,
                                                       ReassignPartitionsCommand$.MODULE$.NoThrottle().postUpdateAction() );
+
+        String assignmentPlanJson = "";
 
         switch ( operation )
         {
@@ -253,15 +258,32 @@ public class KafkaTopicController
                 else
                 {
                     this.assignmentPlan = convertToTopicPartitionAssignment( buildAssignmentPlan( topicName, formData ) );
+                    assignmentPlanJson  = om.writeValueAsString( this.assignmentPlan );
+                    ReassignPartitionsCommand$.MODULE$.executeAssignment( this.zkUtils,
+                                                                          this.adminClientOption,
+                                                                          assignmentPlanJson,
+                                                                          throttle,
+                                                                          10000L );
                 }
                 break;
             case "Verify":
             default:
+                if( this.assignmentPlan != null )
+                {
+                    assignmentPlanJson = om.writeValueAsString( this.assignmentPlan );
+                    ReassignPartitionsCommand$.MODULE$.verifyAssignment( this.zkUtils,
+                                                                         this.adminClientOption,
+                                                                         assignmentPlanJson );
+                }
+                else
+                {
+                    // Nothing to verify.
+                }
                 break;
         }
 
         m.addAttribute( "assignmentPlan", this.assignmentPlan );
-        m.addAttribute( "assignmentPlanJson", om.writeValueAsString( this.assignmentPlan ) );
+        m.addAttribute( "assignmentPlanJson", assignmentPlanJson );
 
         return this.describeTopic( topicName, m );
     }
@@ -308,44 +330,4 @@ public class KafkaTopicController
         return tpa;
     }
 
-    /**
-     *
-     * @param zkUtils
-     * @param partitionsToBeReassigned This is really the scala type: Map[TopicAndPartition, Seq[Int]]
-     * @param throttle
-     */
-    private void executeAssignment( ZkUtils zkUtils,
-                                    scala.collection.Map< TopicAndPartition, Seq< Object > > partitionsToBeReassigned,
-                                    ReassignPartitionsCommand.Throttle throttle )
-    {
-        // This is really a Seq< scala.Int > but for some reason the type system doesn't
-        // understand that.
-        final ReassignPartitionsCommand reassignPartitionsCommand
-            = new ReassignPartitionsCommand( zkUtils, partitionsToBeReassigned, AdminUtils$.MODULE$ );
-
-        // If there is an existing rebalance running, attempt to change its throttle
-        if ( zkUtils.pathExists( ZkUtils.ReassignPartitionsPath() ) )
-        {
-            log.error("There is an existing assignment running.");
-            reassignPartitionsCommand.maybeLimit(throttle);
-        }
-        else
-        {
-            if ( throttle.value() >= 0 )
-            {
-                log.warn( "Warning: You must run Verify periodically, until the reassignment completes, "
-                          + " to ensure the throttle is removed. "
-                          + "You can also alter the throttle by rerunning the Execute command passing a new value." );
-            }
-
-            if (reassignPartitionsCommand.reassignPartitions(throttle))
-            {
-                log.info( "Successfully started reassignment of partitions." );
-            }
-            else
-            {
-                log.error( "Failed to reassign partitions {}", partitionsToBeReassigned );
-            }
-        }
-    }
 }

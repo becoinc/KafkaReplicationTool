@@ -71,7 +71,7 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.apache.kafka/kafka
     // Pull in the whole ball of wax to get the ZK utils and such
-    compile group: 'org.apache.kafka', name: 'kafka_2.12', version: '0.11.0.2' {
+    compile( group: 'org.apache.kafka', name: 'kafka_2.11', version: '1.0.0' ) {
         exclude module: 'slf4j-log4j12'
     }
 
