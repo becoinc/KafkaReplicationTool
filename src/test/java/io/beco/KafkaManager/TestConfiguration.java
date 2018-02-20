@@ -12,8 +12,14 @@
 
 package io.beco.KafkaManager;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
@@ -23,7 +29,8 @@ import java.util.Arrays;
 /**
  * TestConfiguration is a class that does...
  */
-public class TestConfiguration
+@Slf4j
+public class TestConfiguration implements InitializingBean
 {
     @Autowired
     private KafkaProperties kafkaProperties;
@@ -31,10 +38,20 @@ public class TestConfiguration
     @Autowired
     private KafkaEmbedded kafkaEmbedded;
 
+    @Autowired
+    private ConfigurableApplicationContext context;
+
     @Bean
     public KafkaAdmin kafkaAdmin()
     {
         kafkaProperties.setBootstrapServers( Arrays.asList( kafkaEmbedded.getBrokersAsString() ) );
         return new KafkaAdmin( kafkaProperties.buildAdminProperties() );
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception
+    {
+        TestPropertyValues.of( "zookeeper.url:" + kafkaEmbedded.getZookeeperConnectionString() )
+                          .applyTo( context );
     }
 }

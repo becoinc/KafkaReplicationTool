@@ -79,6 +79,8 @@ dependencies {
 
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile( 'org.springframework.kafka:spring-kafka-test' )
+    testCompile( "org.projectlombok:lombok" )
+
 }
 
 def containerJarFileName = "${project.ext.name}-${grgit.head().abbreviatedId}.jar"

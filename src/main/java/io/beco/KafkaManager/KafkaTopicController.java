@@ -231,6 +231,7 @@ public class KafkaTopicController
         log.debug( "Selected Part to Brokers: {}", formData );
 
         final String operation = formData.getFirst( "operation" );
+
         long throttleVal = 0;
         try
         {
@@ -259,6 +260,7 @@ public class KafkaTopicController
                 {
                     this.assignmentPlan = convertToTopicPartitionAssignment( buildAssignmentPlan( topicName, formData ) );
                     assignmentPlanJson  = om.writeValueAsString( this.assignmentPlan );
+                    log.debug( "Assignment Plan: {}", assignmentPlanJson );
                     ReassignPartitionsCommand$.MODULE$.executeAssignment( this.zkUtils,
                                                                           this.adminClientOption,
                                                                           assignmentPlanJson,

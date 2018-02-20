@@ -23,15 +23,15 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
 @RunWith(SpringRunner.class)
 @DirtiesContext
-@EmbeddedKafka( count = 2, // need a couple of brokers to make this interesting.
+@EmbeddedKafka( count = 3, // need a couple of brokers to make this interesting.
                 partitions = 10,
-                topics = { "test.topics.1", "test.topics.2" } )
+                topics = { "test.topics.1", "test.topics.2" }, // the test embedded kafka does one partition-replica per broker.
+                brokerProperties = { "default.replication.factor=1" } )
 @SpringBootTest( webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
                  classes = { KafkaManagerApplication.class, TestConfiguration.class } )
 public class KafkaManagerApplicationTests
@@ -124,5 +124,39 @@ public class KafkaManagerApplicationTests
         Assert.assertTrue( "Must contain test nodes",      model.containsKey( "nodes" ) );
         Assert.assertEquals( model.get( "topicName" ), TEST_TOPIC_1 );
     }
+
+    @Test
+    public void testUpdateTopicPartitions() throws Exception
+    {
+        final UriComponentsBuilder uri
+            = UriComponentsBuilder.fromUriString( this.baseUrl )
+                                  .pathSegment( "topic", TEST_TOPIC_1, "rebalance" );
+
+        final String formBody = "operation=Execute&partitionAssignment-0%2C1=0%2C1&partitionAssignment-8%2C1=8%2C1";
+
+        final MockHttpServletRequestBuilder builder
+            = MockMvcRequestBuilders.post( uri.toUriString() )
+                .accept( MediaType.TEXT_HTML )
+                .contentType( MediaType.APPLICATION_FORM_URLENCODED )
+                .content( formBody )
+            // .with( SecurityMockMvcRequestPostProcessors.httpBasic( username, password ) )
+            ;
+
+        final MvcResult result
+            = mMockMvc.perform( builder )
+                      .andDo( MockMvcResultHandlers.print() )
+                      .andExpect( MockMvcResultMatchers.status().isOk() )
+                      .andExpect( MockMvcResultMatchers.content().contentTypeCompatibleWith( MediaType.TEXT_HTML ) )
+                      // xpath uses 1-based indexes
+                      .andExpect( MockMvcResultMatchers.xpath( "/html/body" ).exists() )
+                      .andReturn()
+            ;
+        final ModelAndView mv = result.getModelAndView();
+        final Map< String, Object > model = mv.getModel();
+        Assert.assertTrue( "Must contain test topic name", model.containsKey( "topicName" ) );
+        Assert.assertTrue( "Must contain test nodes",      model.containsKey( "nodes" ) );
+        Assert.assertEquals( model.get( "topicName" ), TEST_TOPIC_1 );
+    }
+
 
 }
