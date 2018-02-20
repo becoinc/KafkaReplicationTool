@@ -12,6 +12,9 @@
 
 package io.beco.KafkaManager;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import kafka.admin.AdminUtils$;
 import kafka.admin.ReassignPartitionsCommand;
 import kafka.admin.ReassignPartitionsCommand$;
@@ -62,15 +65,21 @@ public class KafkaTopicController
 
     private final String zkUrl;
 
-    private MultiValueMap< TopicAndPartition, Integer > assignmentPlan;
+    private TopicPartitionAssignment assignmentPlan;
+
+    private ObjectMapper om;
 
     @Autowired
     public KafkaTopicController( @Value( "${zookeeper.url}" ) final String zkUrl,
-                                 final KafkaAdmin kafkaAdmin )
+                                 final KafkaAdmin kafkaAdmin,
+                                 final ObjectMapper objectMapper )
     {
         this.kafkaAdmin  = kafkaAdmin;
         this.adminClient = AdminClient.create( kafkaAdmin.getConfig() );
         this.zkUrl       = zkUrl;
+        this.om          = objectMapper;
+
+        this.om.enable( SerializationFeature.INDENT_OUTPUT );
 
         final Tuple2< ZkClient, ZkConnection > zkClient
             = ZkUtils.createZkClientAndConnection( zkUrl,
@@ -215,7 +224,7 @@ public class KafkaTopicController
     public String rebalanceTopic( @PathVariable String topicName,
                                   @RequestBody MultiValueMap< String, String > formData,
                                   Model m )
-    throws InterruptedException, ExecutionException, TimeoutException
+    throws InterruptedException, ExecutionException, TimeoutException, JsonProcessingException
     {
         log.debug( "Selected Part to Brokers: {}", formData );
 
@@ -243,7 +252,7 @@ public class KafkaTopicController
                 }
                 else
                 {
-                    this.assignmentPlan = buildAssignmentPlan( topicName, formData );
+                    this.assignmentPlan = convertToTopicPartitionAssignment( buildAssignmentPlan( topicName, formData ) );
                 }
                 break;
             case "Verify":
@@ -252,6 +261,7 @@ public class KafkaTopicController
         }
 
         m.addAttribute( "assignmentPlan", this.assignmentPlan );
+        m.addAttribute( "assignmentPlanJson", om.writeValueAsString( this.assignmentPlan ) );
 
         return this.describeTopic( topicName, m );
     }
@@ -281,6 +291,21 @@ public class KafkaTopicController
         }
 
         return retVal;
+    }
+
+    private TopicPartitionAssignment
+    convertToTopicPartitionAssignment( final MultiValueMap< TopicAndPartition, Integer > map )
+    {
+        final TopicPartitionAssignment tpa = new TopicPartitionAssignment();
+
+        map.forEach( ( topicAndPartition, brokerList ) -> {
+            tpa.getPartitions().add(
+                new TopicPartitionAssignment.TopicPartReplSet( topicAndPartition.topic(),
+                                                               topicAndPartition.partition(),
+                                                               brokerList ) );
+        } );
+
+        return tpa;
     }
 
     /**
