@@ -23,7 +23,7 @@ apply plugin: 'jacoco'
 apply plugin: 'org.ajoberstar.grgit'
 
 project.group    = 'becoinc'
-project.ext.name = 'kafka_manager'
+project.ext.name = 'kafka_repartition_tool'
 
 project.version = "${grgit.head().abbreviatedId}"
 
