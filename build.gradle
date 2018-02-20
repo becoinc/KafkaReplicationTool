@@ -60,6 +60,9 @@ repositories {
 dependencies {
 	compileOnly('org.projectlombok:lombok')
 
+    // See https://github.com/spring-gradle-plugins/dependency-management-plugin/issues/59
+    compile("log4j:log4j:1.2.17")
+
     // Enable the prometheus integration.
     compile 'io.micrometer:micrometer-registry-prometheus'
 
@@ -77,6 +80,7 @@ dependencies {
         exclude module: 'slf4j-log4j12'
     }
 
+    testCompile("junit:junit")
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile( 'org.springframework.kafka:spring-kafka-test' )
     testCompile( "org.projectlombok:lombok" )
