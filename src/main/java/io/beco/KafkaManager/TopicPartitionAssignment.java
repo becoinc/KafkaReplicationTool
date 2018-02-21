@@ -19,6 +19,7 @@ import lombok.ToString;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * TopicPartitionAssignment is a class used to create
@@ -35,9 +36,9 @@ public class TopicPartitionAssignment
     @Data
     public static class TopicPartReplSet
     {
-        private String          topic;
-        private int             partition;
-        private List< Integer > replicas;
+        private String         topic;
+        private int            partition;
+        private Set< Integer > replicas;
     }
 
     private final int version = 1;

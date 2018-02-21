@@ -56,15 +56,11 @@ import java.util.stream.Collectors;
 public class KafkaTopicController
 {
 
-    private final KafkaAdmin kafkaAdmin;
-
     private final AdminClient adminClient;
 
     private final Option< AdminClient > adminClientOption;
 
     private final ZkUtils zkUtils;
-
-    private final String zkUrl;
 
     private TopicPartitionAssignment assignmentPlan;
 
@@ -75,10 +71,8 @@ public class KafkaTopicController
                                  final KafkaAdmin kafkaAdmin,
                                  final ObjectMapper objectMapper )
     {
-        this.kafkaAdmin        = kafkaAdmin;
         this.adminClient       = AdminClient.create( kafkaAdmin.getConfig() );
         this.adminClientOption = Option.apply( this.adminClient );
-        this.zkUrl             = zkUrl;
         this.om                = objectMapper;
 
         this.om.enable( SerializationFeature.INDENT_OUTPUT );
@@ -258,7 +252,13 @@ public class KafkaTopicController
                 }
                 else
                 {
-                    this.assignmentPlan = convertToTopicPartitionAssignment( buildAssignmentPlan( topicName, formData ) );
+                    final TopicPartitionAssignment requested
+                        = convertToTopicPartitionAssignment( buildAssignmentPlan( topicName, formData ) );
+                    final TopicPartitionAssignment current
+                        = this.getCurrentTopicConfiguration( topicName );
+
+                    this.assignmentPlan = findAssignmentChanges( requested, current );
+
                     assignmentPlanJson  = om.writeValueAsString( this.assignmentPlan );
                     log.debug( "Assignment Plan: {}", assignmentPlanJson );
                     ReassignPartitionsCommand$.MODULE$.executeAssignment( this.zkUtils,
@@ -288,6 +288,51 @@ public class KafkaTopicController
         m.addAttribute( "assignmentPlanJson", assignmentPlanJson );
 
         return this.describeTopic( topicName, m );
+    }
+
+    private TopicPartitionAssignment getCurrentTopicConfiguration( final String topicName )
+    throws InterruptedException, ExecutionException, TimeoutException
+    {
+        final TopicPartitionAssignment tpa = new TopicPartitionAssignment();
+
+        final DescribeTopicsResult  dtr = this.adminClient.describeTopics( Collections.singleton( topicName ) );
+
+        final KafkaFuture< Void > topicData
+            = KafkaFuture.allOf(
+            dtr.all()
+               .thenApply( new KafkaFuture.Function< Map< String, TopicDescription >, Map< String, TopicDescription > >()
+               {
+                   @Override
+                   public Map< String, TopicDescription > apply( Map< String, TopicDescription > topicDescriptionMap )
+                   {
+                       Assert.isTrue( topicDescriptionMap.size() == 1, "Only Single Topic Supported." );
+
+                       final TopicDescription description = topicDescriptionMap.get( topicName );
+
+                       final Map< Integer, Set< Integer > > partitionsToSetOfNodeIds =
+                           description.partitions()
+                                      .stream()
+                                      .collect( Collectors.toMap( TopicPartitionInfo::partition,
+                                                                  tpi -> tpi.replicas()
+                                                                            .stream()
+                                                                            .map( Node::id )
+                                                                            .collect( Collectors.toSet() ) ) );
+
+                       partitionsToSetOfNodeIds.forEach( ( partition, nodeIdSet ) -> {
+
+                           tpa.getPartitions().add(
+                               new TopicPartitionAssignment.TopicPartReplSet( topicName, partition, nodeIdSet ) );
+
+                       } );
+
+                       return topicDescriptionMap;
+                   }
+               } )
+        );
+
+        topicData.get( 25, TimeUnit.SECONDS );
+
+        return tpa;
     }
 
     private MultiValueMap< TopicAndPartition, Integer >
@@ -323,13 +368,34 @@ public class KafkaTopicController
         final TopicPartitionAssignment tpa = new TopicPartitionAssignment();
 
         map.forEach( ( topicAndPartition, brokerList ) -> {
+            final Set< Integer > brokerIds = new TreeSet<>( Comparator.comparingInt( Integer::valueOf ) );
+            brokerIds.addAll( brokerList );
             tpa.getPartitions().add(
                 new TopicPartitionAssignment.TopicPartReplSet( topicAndPartition.topic(),
                                                                topicAndPartition.partition(),
-                                                               brokerList ) );
+                                                               brokerIds ) );
         } );
 
         return tpa;
+    }
+
+    /**
+     * Finds only the changed broker assignments for all the partitions on the topic.
+     *
+     * For simplicity we only work with a <b>single</b> topic.
+     *
+     * @param requested
+     * @param current
+     * @return
+     */
+    private static TopicPartitionAssignment findAssignmentChanges( final TopicPartitionAssignment requested,
+                                                                   final TopicPartitionAssignment current )
+    {
+        final TopicPartitionAssignment changed = new TopicPartitionAssignment();
+
+        // TODO - WIP
+
+        return changed;
     }
 
 }
