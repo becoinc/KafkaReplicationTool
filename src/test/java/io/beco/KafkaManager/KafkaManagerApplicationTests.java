@@ -128,36 +128,33 @@ public class KafkaManagerApplicationTests
     @Test
     public void testUpdateTopicPartitions() throws Exception
     {
-        if( false )
-        {
-            final UriComponentsBuilder uri
-                = UriComponentsBuilder.fromUriString( this.baseUrl )
-                                      .pathSegment( "topic", TEST_TOPIC_1, "rebalance" );
+        final UriComponentsBuilder uri
+            = UriComponentsBuilder.fromUriString( this.baseUrl )
+                                  .pathSegment( "topic", TEST_TOPIC_1, "rebalance" );
 
-            final String formBody = "operation=Execute&partitionAssignment-0%2C1=0%2C1&partitionAssignment-8%2C1=8%2C1";
+        final String formBody = "operation=Execute&partitionAssignment-0%2C1=0%2C1&partitionAssignment-8%2C1=8%2C1";
 
-            final MockHttpServletRequestBuilder builder
-                = MockMvcRequestBuilders.post( uri.toUriString() )
-                                        .accept( MediaType.TEXT_HTML )
-                                        .contentType( MediaType.APPLICATION_FORM_URLENCODED )
-                                        .content( formBody )
-                // .with( SecurityMockMvcRequestPostProcessors.httpBasic( username, password ) )
-                ;
+        final MockHttpServletRequestBuilder builder
+            = MockMvcRequestBuilders.post( uri.toUriString() )
+                                    .accept( MediaType.TEXT_HTML )
+                                    .contentType( MediaType.APPLICATION_FORM_URLENCODED )
+                                    .content( formBody )
+            // .with( SecurityMockMvcRequestPostProcessors.httpBasic( username, password ) )
+            ;
 
-            final MvcResult result
-                = mMockMvc.perform( builder )
-                          .andDo( MockMvcResultHandlers.print() )
-                          .andExpect( MockMvcResultMatchers.status().isOk() )
-                          .andExpect( MockMvcResultMatchers.content().contentTypeCompatibleWith( MediaType.TEXT_HTML ) )
-                          // xpath uses 1-based indexes
-                          .andExpect( MockMvcResultMatchers.xpath( "/html/body" ).exists() )
-                          .andReturn();
-            final ModelAndView mv = result.getModelAndView();
-            final Map< String, Object > model = mv.getModel();
-            Assert.assertTrue( "Must contain test topic name", model.containsKey( "topicName" ) );
-            Assert.assertTrue( "Must contain test nodes", model.containsKey( "nodes" ) );
-            Assert.assertEquals( model.get( "topicName" ), TEST_TOPIC_1 );
-        }
+        final MvcResult result
+            = mMockMvc.perform( builder )
+                      .andDo( MockMvcResultHandlers.print() )
+                      .andExpect( MockMvcResultMatchers.status().isOk() )
+                      .andExpect( MockMvcResultMatchers.content().contentTypeCompatibleWith( MediaType.TEXT_HTML ) )
+                      // xpath uses 1-based indexes
+                      .andExpect( MockMvcResultMatchers.xpath( "/html/body" ).exists() )
+                      .andReturn();
+        final ModelAndView mv = result.getModelAndView();
+        final Map< String, Object > model = mv.getModel();
+        Assert.assertTrue( "Must contain test topic name", model.containsKey( "topicName" ) );
+        Assert.assertTrue( "Must contain test nodes", model.containsKey( "nodes" ) );
+        Assert.assertEquals( model.get( "topicName" ), TEST_TOPIC_1 );
     }
 
 

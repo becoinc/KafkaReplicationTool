@@ -257,7 +257,7 @@ public class KafkaTopicController
                     final TopicPartitionAssignment current
                         = this.getCurrentTopicConfiguration( topicName );
 
-                    this.assignmentPlan = findAssignmentChanges( requested, current );
+                    this.assignmentPlan = TopicPartitionAssignment.findAssignmentChanges( requested, current );
 
                     assignmentPlanJson  = om.writeValueAsString( this.assignmentPlan );
                     log.debug( "Assignment Plan: {}", assignmentPlanJson );
@@ -318,12 +318,7 @@ public class KafkaTopicController
                                                                             .map( Node::id )
                                                                             .collect( Collectors.toSet() ) ) );
 
-                       partitionsToSetOfNodeIds.forEach( ( partition, nodeIdSet ) -> {
-
-                           tpa.getPartitions().add(
-                               new TopicPartitionAssignment.TopicPartReplSet( topicName, partition, nodeIdSet ) );
-
-                       } );
+                       partitionsToSetOfNodeIds.forEach( ( partition, nodeIdSet ) -> tpa.add( topicName, partition, nodeIdSet ) );
 
                        return topicDescriptionMap;
                    }
@@ -367,35 +362,10 @@ public class KafkaTopicController
     {
         final TopicPartitionAssignment tpa = new TopicPartitionAssignment();
 
-        map.forEach( ( topicAndPartition, brokerList ) -> {
-            final Set< Integer > brokerIds = new TreeSet<>( Comparator.comparingInt( Integer::valueOf ) );
-            brokerIds.addAll( brokerList );
-            tpa.getPartitions().add(
-                new TopicPartitionAssignment.TopicPartReplSet( topicAndPartition.topic(),
-                                                               topicAndPartition.partition(),
-                                                               brokerIds ) );
-        } );
+        map.forEach( ( topicAndPartition, brokerList ) ->
+                         tpa.add( topicAndPartition.topic(), topicAndPartition.partition(), brokerList ) );
 
         return tpa;
-    }
-
-    /**
-     * Finds only the changed broker assignments for all the partitions on the topic.
-     *
-     * For simplicity we only work with a <b>single</b> topic.
-     *
-     * @param requested
-     * @param current
-     * @return
-     */
-    private static TopicPartitionAssignment findAssignmentChanges( final TopicPartitionAssignment requested,
-                                                                   final TopicPartitionAssignment current )
-    {
-        final TopicPartitionAssignment changed = new TopicPartitionAssignment();
-
-        // TODO - WIP
-
-        return changed;
     }
 
 }

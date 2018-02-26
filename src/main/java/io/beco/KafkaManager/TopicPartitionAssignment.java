@@ -12,14 +12,15 @@
 
 package io.beco.KafkaManager;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.ToString;
+import org.springframework.util.Assert;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * TopicPartitionAssignment is a class used to create
@@ -43,5 +44,114 @@ public class TopicPartitionAssignment
 
     private final int version = 1;
 
-    private final List< TopicPartReplSet > partitions = new LinkedList<>();
+    /**
+     * A multi-dimensional map of topics -> partitions -> [ replica id set ]
+     */
+    @JsonIgnore
+    private final Map< String, Map< Integer, Set< Integer > > > topicPartAssignments = new HashMap<>();
+
+    /**
+     * Adds a set of broker ids to the set of brokers.
+     * @param topic
+     * @param partition
+     * @param brokerIds
+     */
+    public void add( final String topic, int partition, Collection< Integer > brokerIds )
+    {
+        Assert.notNull( topic, "Topic may not be null" );
+        Assert.notNull( topic, "Broker Ids may not be null." );
+
+        Map< Integer, Set< Integer > > partAssignments = this.topicPartAssignments.get( topic );
+        if( partAssignments == null )
+        {
+            partAssignments = new HashMap<>();
+            this.topicPartAssignments.put( topic, partAssignments );
+        }
+
+        Set< Integer > replicas = partAssignments.get( partition );
+        if ( replicas == null )
+        {
+            replicas = new HashSet<>();
+            partAssignments.put( partition, replicas );
+        }
+        replicas.addAll( brokerIds );
+    }
+
+    /**
+     * Adds a broker to the set of brokers for the
+     * @param topic
+     * @param partition
+     * @param brokerId
+     */
+    public void add( final String topic, int partition, int brokerId )
+    {
+        Assert.notNull( topic, "Topic may not be null" );
+
+        Map< Integer, Set< Integer > > partAssignments = this.topicPartAssignments.get( topic );
+        if( partAssignments == null )
+        {
+            partAssignments = new HashMap<>();
+            this.topicPartAssignments.put( topic, partAssignments );
+        }
+
+        Set< Integer > replicas = partAssignments.get( partition );
+        if ( replicas == null )
+        {
+            replicas = new HashSet<>();
+            partAssignments.put( partition, replicas );
+        }
+        replicas.add( brokerId );
+    }
+
+    @JsonProperty( "partitions" )
+    public List< TopicPartReplSet > generateTopicAssignments()
+    {
+        final List< TopicPartReplSet > partitions = new LinkedList<>();
+
+        this.topicPartAssignments.forEach( ( topic, topicPartAssignments ) -> {
+            topicPartAssignments.forEach( ( partition, replicas ) -> {
+                partitions.add( new TopicPartReplSet( topic, partition, replicas ) );
+            });
+        });
+
+        return partitions;
+    }
+
+    /**
+     * Finds only the changed broker assignments for all the partitions on the topic.
+     *
+     * For simplicity we only work with a <b>single</b> topic.
+     *
+     * @param requested
+     * @param current
+     * @return
+     */
+    public static TopicPartitionAssignment findAssignmentChanges( final TopicPartitionAssignment requested,
+                                                                  final TopicPartitionAssignment current )
+    {
+        final TopicPartitionAssignment changed = new TopicPartitionAssignment();
+
+        final Map< String, Map< Integer, Set< Integer > > > topicPartMap = current.getTopicPartAssignments();
+
+        requested.getTopicPartAssignments().forEach( ( topic, partAssignments ) -> {
+            final Map< Integer, Set< Integer > > partMap = topicPartMap.get( topic );
+            if( partMap != null )
+            {
+                changed.set( topic, partMap );
+            }
+        } );
+
+        return changed;
+    }
+
+    /**
+     * Set the partition assignments for a topic, <b>overwriting</b> whatever is there already.
+     * @param topic
+     * @param partMap
+     */
+    public void set( final String topic,
+                     final Map< Integer, Set< Integer > > partMap )
+    {
+        this.topicPartAssignments.put( topic, partMap );
+    }
 }

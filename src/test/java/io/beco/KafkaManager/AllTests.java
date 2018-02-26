@@ -22,7 +22,8 @@ import org.junit.runners.Suite;
 @RunWith( Suite.class )
 @Suite.SuiteClasses(
     {
-        KafkaManagerApplicationTests.class
+        KafkaManagerApplicationTests.class,
+        TopicPartitionAssignmentTests.class
     } )
 public class AllTests
 {
