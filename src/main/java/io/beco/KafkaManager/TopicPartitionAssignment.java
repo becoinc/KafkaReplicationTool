@@ -137,7 +137,7 @@ public class TopicPartitionAssignment
             final Map< Integer, Set< Integer > > partMap = topicPartMap.get( topic );
             if( partMap != null )
             {
-                changed.set( topic, partMap );
+                changed.set( topic, partAssignments );
             }
         } );
 

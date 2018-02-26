@@ -46,7 +46,7 @@ public class TopicPartitionAssignmentTests
     public void testFindPartitionAssignments()
     {
         final TopicPartitionAssignment changes =
-            TopicPartitionAssignment.findAssignmentChanges( testSet1(), testSet2() );
+            TopicPartitionAssignment.findAssignmentChanges( testSet2(), testSet1() );
         Assert.assertNotNull( changes );
         Assert.assertEquals( 1, changes.getTopicPartAssignments().size() ); // 1 topic changed
         Assert.assertEquals( 2, changes.getTopicPartAssignments().get( topic2 ).size() );
