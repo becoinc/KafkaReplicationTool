@@ -12,13 +12,15 @@ A tool for adjusting the replication factors of kafka topics.
 ### Partition Assignment Matrix ###
 ![Partition Assignment Matrix](docs/topics.png "Partition Assignment Matrix")
 
+## Directions ##
+
 The workflow of this tool is preliminary. The exposed
 Scala API from the upstream Kafka admin tool collection
 is not conducive to a better work flow.
 
 Much status information is still logged to STDOUT instead of propagated to the UI.
 
-## Example Marathon App Definition ##
+### Example Marathon App Definition ###
 
 [Docker Hub Link](https://hub.docker.com/r/becoinc/kafka_repartition_tool/)
 
