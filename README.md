@@ -3,6 +3,10 @@ A tool for adjusting the replication factors of kafka topics.
 
 *This is a WIP*
 
+Screen Shots:
+![Cluster Overview](docs/matrix.png?raw=true "Cluster Overview")
+![Partition Assignment Matrix](docs/topics.png?raw=true "Partition Assignment Matrix")
+
 The workflow of this tool is preliminary. The exposed
 Scala API from the upstream Kafka admin tool collection
 is not conducive to a better work flow.
