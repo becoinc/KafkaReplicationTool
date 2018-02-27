@@ -15,8 +15,8 @@ A tool for adjusting the replication factors of kafka topics.
 ## Directions ##
 
 The workflow of this tool is preliminary. The exposed
-Scala API from the upstream Kafka admin tool collection
-is not conducive to a better work flow.
+Scala API from the upstream Kafka admin tool collection is not designed
+to be used as an integration point for third part tools.
 
 Much status information is still logged to STDOUT instead of propagated to the UI.
 
