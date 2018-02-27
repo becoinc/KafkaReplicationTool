@@ -3,8 +3,13 @@ A tool for adjusting the replication factors of kafka topics.
 
 *This is a WIP*
 
-Screen Shots:
+## Screen Shots ##
+
+### Cluster Overview Display ###
 ![Cluster Overview](docs/matrix.png?raw=true "Cluster Overview")
+
+
+### Partition Assignment Matrix ###
 ![Partition Assignment Matrix](docs/topics.png?raw=true "Partition Assignment Matrix")
 
 The workflow of this tool is preliminary. The exposed
