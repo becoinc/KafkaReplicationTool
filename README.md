@@ -6,11 +6,11 @@ A tool for adjusting the replication factors of kafka topics.
 ## Screen Shots ##
 
 ### Cluster Overview Display ###
-![Cluster Overview](docs/matrix.png "Cluster Overview")
+![Cluster Overview](docs/topics.png "Cluster Overview")
 
 
 ### Partition Assignment Matrix ###
-![Partition Assignment Matrix](docs/topics.png "Partition Assignment Matrix")
+![Partition Assignment Matrix](docs/matrix.png "Partition Assignment Matrix")
 
 ## Directions ##
 
