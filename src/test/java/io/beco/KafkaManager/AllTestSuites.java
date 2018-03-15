@@ -1,5 +1,5 @@
 /**
- * @file AllTests.java
+ * @file AllTestSuites.java
  * <p>
  * Copyright (C) 2018 by Beco Inc. All Rights Reserved.
  * See included LICENSE file with this for terms of use.
@@ -13,7 +13,7 @@
 package io.beco.KafkaManager;
 
 /**
- * AllTests is a class that does...
+ * AllTestSuites is a class that does...
  */
 
 import org.junit.runner.RunWith;
@@ -25,6 +25,6 @@ import org.junit.runners.Suite;
         KafkaManagerApplicationTests.class,
         TopicPartitionAssignmentTests.class
     } )
-public class AllTests
+public class AllTestSuites
 {
 }
