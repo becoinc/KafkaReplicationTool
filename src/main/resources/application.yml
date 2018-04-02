@@ -16,8 +16,9 @@ zookeeper:
 management:
   endpoints:
     web:
-      expose: '*'
       base-path: /internal/monitor
+      exposure:
+        include: '*'
 
 logging:
   level:
